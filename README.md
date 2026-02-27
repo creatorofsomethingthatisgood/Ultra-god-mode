@@ -4,3 +4,7 @@ This is educational content only I am not responsible for any damages to compute
  1. Download zip file and exctract it
  2. Run the con_for_windows or if you are on linux run the con_for_linux
  3. You have Ddos scripts, an ad blocker a optimizer only for ubuntu and a harmless virus.
+
+This is a fun thing go watch me on youtube @fikawarriors.
+
+This will recive updates forever with LTS coming soon!
