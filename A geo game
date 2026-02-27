@@ -1,0 +1,2413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#2563eb">
+    <title>GeoFlash World - Expert Edition</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --dark: #1f2937;
+            --light: #f3f4f6;
+            --white: #ffffff;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        [data-theme="dark"] {
+            --primary: #3b82f6;
+            --dark: #e5e7eb;
+            --light: #374151;
+            --white: #1f2937;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: var(--dark);
+            transition: all 0.3s;
+        }
+        
+        .app-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: var(--white);
+            min-height: 100vh;
+            transition: all 0.3s;
+        }
+        
+        /* View Modes */
+        body.desktop-mode .app-container {
+            max-width: 1200px;
+            margin: 20px auto;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            min-height: calc(100vh - 40px);
+        }
+        
+        body.mobile-mode .app-container {
+            max-width: 100%;
+            border-radius: 0;
+        }
+        
+        body.tablet-mode .app-container {
+            max-width: 768px;
+            margin: 10px auto;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        body.desktop-mode .content { padding: 30px; }
+        body.desktop-mode .deck-grid { grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        body.desktop-mode .flashcard-container { height: 500px; }
+        body.desktop-mode .stats-grid { grid-template-columns: repeat(4, 1fr); }
+        body.desktop-mode .achievements-grid { grid-template-columns: repeat(6, 1fr); }
+        body.desktop-mode .card-text { font-size: 28px !important; }
+        body.desktop-mode .map-container { height: 550px; }
+        
+        body.mobile-mode .content { padding: 15px; }
+        body.mobile-mode .deck-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        body.mobile-mode .flashcard-container { height: 340px; }
+        body.mobile-mode .card-text { font-size: 18px !important; }
+        body.mobile-mode .header h1 { font-size: 16px; }
+        body.mobile-mode .nav-tab { padding: 10px 8px; font-size: 11px; }
+        body.mobile-mode .map-container { height: 350px; }
+        
+        body.tablet-mode .content { padding: 25px; }
+        body.tablet-mode .deck-grid { grid-template-columns: repeat(3, 1fr); }
+        body.tablet-mode .flashcard-container { height: 420px; }
+        
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header h1 {
+            font-size: 20px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .header-stats {
+            display: flex;
+            gap: 12px;
+            font-size: 14px;
+            align-items: center;
+        }
+        
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .view-toggle {
+            cursor: pointer;
+            padding: 5px 10px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 8px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .view-toggle:hover {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.05);
+        }
+        
+        /* Navigation */
+        .nav-tabs {
+            display: flex;
+            background: var(--white);
+            border-bottom: 2px solid var(--light);
+            position: sticky;
+            top: 60px;
+            z-index: 50;
+        }
+        
+        .nav-tab {
+            flex: 1;
+            padding: 12px;
+            background: none;
+            border: none;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--dark);
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+        
+        .nav-tab.active { color: var(--primary); }
+        
+        .nav-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--primary);
+        }
+        
+        .nav-tab:hover { background: var(--light); }
+        
+        /* Content */
+        .content {
+            padding: 20px;
+            min-height: calc(100vh - 150px);
+        }
+        
+        .screen { display: none; animation: fadeIn 0.3s ease; }
+        .screen.active { display: block; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Difficulty Modal */
+        .difficulty-modal {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            backdrop-filter: blur(5px);
+        }
+        
+        .difficulty-modal.active { display: flex; }
+        
+        .difficulty-content {
+            background: var(--white);
+            border-radius: 25px;
+            padding: 35px;
+            max-width: 420px;
+            width: 90%;
+            text-align: center;
+            animation: modalPop 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        
+        @keyframes modalPop {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .difficulty-title {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--dark);
+            margin-bottom: 10px;
+        }
+        
+        .difficulty-subtitle {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+        
+        .difficulty-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        
+        .difficulty-options { display: flex; flex-direction: column; gap: 12px; }
+        
+        .difficulty-btn {
+            padding: 16px 20px;
+            border: none;
+            border-radius: 15px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .difficulty-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        
+        .difficulty-btn.easy { background: linear-gradient(135deg, #22c55e, #16a34a); color: white; }
+        .difficulty-btn.medium { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
+        .difficulty-btn.hard { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
+        
+        .difficulty-info { font-size: 11px; opacity: 0.9; }
+        
+        .difficulty-cancel {
+            margin-top: 15px;
+            padding: 12px 25px;
+            background: var(--light);
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--dark);
+            cursor: pointer;
+        }
+        
+        /* Flashcard */
+        .flashcard-container {
+            perspective: 1000px;
+            height: 380px;
+            margin: 15px 0;
+        }
+        
+        .flashcard {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+            cursor: pointer;
+        }
+        
+        .flashcard.flipped { transform: rotateY(180deg); }
+        
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 20px;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 25px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+        }
+        
+        .card-back {
+            transform: rotateY(180deg);
+            background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
+        }
+        
+        .card-flag {
+            font-size: 80px;
+            margin-bottom: 15px;
+        }
+        
+        .card-text {
+            font-size: 22px;
+            font-weight: 700;
+            text-align: center;
+            line-height: 1.4;
+        }
+        
+        .card-hint {
+            font-size: 13px;
+            margin-top: 15px;
+            opacity: 0.8;
+            text-align: center;
+        }
+        
+        .card-category {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(255,255,255,0.2);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        .card-difficulty-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        .card-difficulty-badge.easy { background: var(--success); }
+        .card-difficulty-badge.medium { background: var(--warning); }
+        .card-difficulty-badge.hard { background: var(--danger); }
+        
+        .fun-fact {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 10px;
+            font-size: 13px;
+            line-height: 1.5;
+            text-align: center;
+        }
+        
+        /* Forms & Buttons */
+        .answer-section {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .answer-input {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid var(--primary);
+            border-radius: 12px;
+            font-size: 16px;
+            background: var(--white);
+            color: var(--dark);
+        }
+        
+        .answer-input:focus {
+            outline: none;
+            border-color: var(--primary-dark);
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+        }
+        
+        .answer-input.correct { border-color: var(--success); background: rgba(34,197,94,0.1); }
+        .answer-input.incorrect { border-color: var(--danger); background: rgba(239,68,68,0.1); }
+        
+        .control-buttons, .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .action-buttons { justify-content: center; }
+        
+        .btn {
+            flex: 1;
+            padding: 14px 18px;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover { transform: translateY(-2px); }
+        .btn:active { transform: scale(0.98); }
+        
+        .btn-hard { background: var(--danger); color: white; }
+        .btn-medium { background: var(--warning); color: white; }
+        .btn-easy { background: var(--success); color: white; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-secondary { background: var(--light); color: var(--dark); }
+        
+        /* Deck Cards */
+        .deck-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 15px;
+        }
+        
+        .deck-card {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 15px;
+            padding: 20px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .deck-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+        }
+        
+        .deck-card::before {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: shimmer 3s infinite linear;
+        }
+        
+        @keyframes shimmer {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .deck-icon { font-size: 35px; margin-bottom: 10px; position: relative; }
+        .deck-name { font-size: 15px; font-weight: 700; position: relative; }
+        .deck-count { font-size: 11px; opacity: 0.8; margin-top: 5px; position: relative; }
+        
+        .deck-progress {
+            margin-top: 10px;
+            height: 4px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 2px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .deck-progress-bar {
+            height: 100%;
+            background: var(--success);
+            transition: width 0.3s;
+        }
+        
+        .deck-expert-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: var(--danger);
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 9px;
+            font-weight: 700;
+        }
+        
+        /* Daily Challenge */
+        .daily-challenge {
+            background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
+            border-radius: 15px;
+            padding: 25px;
+            color: white;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .daily-challenge::before {
+            content: '⚡';
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 60px;
+            opacity: 0.2;
+        }
+        
+        .daily-title { font-size: 18px; font-weight: 800; }
+        .daily-description { font-size: 13px; margin: 10px 0 15px; opacity: 0.95; }
+        
+        .daily-button {
+            background: white;
+            color: #991b1b;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .daily-button:hover { transform: scale(1.05); }
+        
+        /* Profile */
+        .profile-header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 15px;
+            padding: 30px;
+            color: white;
+            text-align: center;
+        }
+        
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: white;
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+        }
+        
+        .profile-name { font-size: 24px; font-weight: 800; }
+        .profile-level { font-size: 14px; opacity: 0.9; margin-top: 5px; }
+        
+        .xp-bar {
+            margin-top: 15px;
+            height: 10px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        
+        .xp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #22c55e, #16a34a);
+            transition: width 0.5s;
+        }
+        
+        .xp-text {
+            font-size: 12px;
+            margin-top: 8px;
+            opacity: 0.9;
+        }
+        
+        /* Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 20px;
+        }
+        
+        .stat-card {
+            background: var(--light);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .stat-value { font-size: 28px; font-weight: 800; color: var(--primary); }
+        .stat-label { font-size: 12px; color: var(--dark); opacity: 0.7; margin-top: 5px; }
+        
+        /* Achievements */
+        .achievements-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 20px;
+        }
+        
+        .achievement {
+            aspect-ratio: 1;
+            background: var(--light);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .achievement:hover { transform: scale(1.05); }
+        
+        .achievement.unlocked {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            box-shadow: var(--shadow);
+        }
+        
+        .achievement.locked { opacity: 0.4; filter: grayscale(1); }
+        
+        .achievement-icon { font-size: 28px; }
+        .achievement-name { font-size: 9px; text-align: center; font-weight: 600; margin-top: 5px; }
+        
+        /* Settings */
+        .settings-section { margin-bottom: 25px; }
+        .settings-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; color: var(--dark); }
+        
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: var(--light);
+            border-radius: 10px;
+            margin-bottom: 8px;
+        }
+        
+        .setting-label { font-size: 14px; color: var(--dark); }
+        
+        .toggle-switch {
+            width: 50px;
+            height: 26px;
+            background: #ccc;
+            border-radius: 13px;
+            cursor: pointer;
+            position: relative;
+            transition: background 0.3s;
+        }
+        
+        .toggle-switch.active { background: var(--primary); }
+        
+        .toggle-slider {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+        
+        .toggle-switch.active .toggle-slider { transform: translateX(24px); }
+        
+        .language-select {
+            padding: 8px 15px;
+            border: 2px solid var(--primary);
+            border-radius: 8px;
+            background: var(--white);
+            font-size: 14px;
+            color: var(--dark);
+            cursor: pointer;
+        }
+        
+        /* Map */
+        .map-container {
+            height: 450px;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 15px 0;
+            position: relative;
+        }
+        
+        #map { height: 100%; width: 100%; }
+        
+        .map-overlay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            background: rgba(255,255,255,0.95);
+            border-radius: 10px;
+            padding: 15px;
+            z-index: 1000;
+        }
+        
+        .map-question { font-size: 16px; font-weight: 700; color: var(--dark); }
+        
+        .map-score {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+        
+        /* Feedback */
+        .answer-feedback {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--white);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 1000;
+            text-align: center;
+            animation: feedbackPop 0.5s ease;
+        }
+        
+        @keyframes feedbackPop {
+            0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.1); }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+        
+        .feedback-correct { color: var(--success); font-size: 22px; font-weight: 800; }
+        .feedback-incorrect { color: var(--danger); font-size: 22px; font-weight: 800; }
+        .feedback-xp { font-size: 16px; font-weight: 700; margin: 10px 0; }
+        
+        /* Modal */
+        .modal {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9998;
+        }
+        
+        .modal.active { display: flex; }
+        
+        .modal-content {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 380px;
+            width: 90%;
+            text-align: center;
+            animation: modalSlideIn 0.3s ease;
+        }
+        
+        @keyframes modalSlideIn {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .modal-title { font-size: 24px; font-weight: 800; margin-bottom: 15px; color: var(--dark); }
+        .modal-text { font-size: 14px; line-height: 1.6; margin-bottom: 20px; color: var(--dark); white-space: pre-line; }
+        
+        /* PWA Install */
+        .install-button {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 15px 25px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: var(--shadow-lg);
+            z-index: 1000;
+            animation: slideInRight 0.5s ease;
+        }
+        
+        @keyframes slideInRight {
+            from { transform: translateX(100px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        /* View Mode Indicator */
+        .view-indicator {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        
+        .view-indicator.show { opacity: 1; }
+        
+        /* Streak Animation */
+        .streak-fire {
+            animation: firePulse 1s ease-in-out infinite;
+        }
+        
+        @keyframes firePulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+        
+        /* Study Progress Bar */
+        .study-progress {
+            margin-top: 20px;
+            padding: 15px;
+            background: var(--light);
+            border-radius: 12px;
+        }
+        
+        .study-progress-bar {
+            height: 8px;
+            background: #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        
+        .study-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--success));
+            transition: width 0.5s;
+        }
+        
+        /* Leaderboard */
+        .leaderboard {
+            margin-top: 20px;
+        }
+        
+        .leaderboard-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 12px;
+            background: var(--light);
+            border-radius: 10px;
+            margin-bottom: 8px;
+        }
+        
+        .leaderboard-rank {
+            font-size: 18px;
+            font-weight: 800;
+            width: 30px;
+        }
+        
+        .leaderboard-name { flex: 1; font-weight: 600; }
+        .leaderboard-xp { color: var(--primary); font-weight: 700; }
+        
+        /* Responsive text */
+        @media (max-width: 400px) {
+            .header h1 { font-size: 14px; }
+            .header-stats { gap: 8px; font-size: 12px; }
+            .deck-name { font-size: 13px; }
+        }
+    </style>
+</head>
+<body class="desktop-mode">
+    <div class="app-container">
+        <header class="header">
+            <h1>🌍 <span class="app-title">GeoFlash Expert</span></h1>
+            <div class="header-stats">
+                <div class="stat-item view-toggle" onclick="toggleViewMode()" title="Ctrl+Shift+M">
+                    <span id="view-icon">💻</span>
+                    <span id="view-text" style="font-size:11px">Desktop</span>
+                </div>
+                <div class="stat-item">
+                    <span class="streak-fire">🔥</span>
+                    <span id="streak">0</span>
+                </div>
+                <div class="stat-item">⭐ <span id="xp">0</span></div>
+                <div class="stat-item">🏆 <span id="level">1</span></div>
+            </div>
+        </header>
+        
+        <nav class="nav-tabs">
+            <button class="nav-tab active" onclick="switchScreen('home')">🏠 Home</button>
+            <button class="nav-tab" onclick="switchScreen('flashcards')">🎴 Study</button>
+            <button class="nav-tab" onclick="switchScreen('map')">🗺️ Map</button>
+            <button class="nav-tab" onclick="switchScreen('profile')">👤 Profile</button>
+            <button class="nav-tab" onclick="switchScreen('settings')">⚙️</button>
+        </nav>
+        
+        <div class="content">
+            <!-- Home Screen -->
+            <div id="home-screen" class="screen active">
+                <div class="daily-challenge">
+                    <div class="daily-title">🔥 Expert Challenge</div>
+                    <div class="daily-description">15 brutal geography questions. Only for true experts!</div>
+                    <button class="daily-button" onclick="startDailyChallenge()">Accept Challenge</button>
+                </div>
+                
+                <h2 style="font-size:18px;font-weight:800;margin-bottom:5px;">Select Your Challenge</h2>
+                <p style="font-size:12px;color:#666;margin-bottom:10px;">Calibrated for intermediate 40-year-old learners</p>
+                
+                <div class="deck-grid">
+                    <div class="deck-card" onclick="showDifficultyModal('countries')">
+                        <span class="deck-expert-badge">EXPERT</span>
+                        <div class="deck-icon">🌏</div>
+                        <div class="deck-name">Countries</div>
+                        <div class="deck-count">195 challenging cards</div>
+                        <div class="deck-progress"><div class="deck-progress-bar" id="progress-countries" style="width:0%"></div></div>
+                    </div>
+                    <div class="deck-card" onclick="showDifficultyModal('capitals')">
+                        <span class="deck-expert-badge">EXPERT</span>
+                        <div class="deck-icon">🏛️</div>
+                        <div class="deck-name">Capitals</div>
+                        <div class="deck-count">195 obscure capitals</div>
+                        <div class="deck-progress"><div class="deck-progress-bar" id="progress-capitals" style="width:0%"></div></div>
+                    </div>
+                    <div class="deck-card" onclick="showDifficultyModal('flags')">
+                        <span class="deck-expert-badge">EXPERT</span>
+                        <div class="deck-icon">🚩</div>
+                        <div class="deck-name">Flags</div>
+                        <div class="deck-count">195 tricky flags</div>
+                        <div class="deck-progress"><div class="deck-progress-bar" id="progress-flags" style="width:0%"></div></div>
+                    </div>
+                    <div class="deck-card" onclick="showDifficultyModal('borders')">
+                        <span class="deck-expert-badge">NEW</span>
+                        <div class="deck-icon">🗺️</div>
+                        <div class="deck-name">Borders</div>
+                        <div class="deck-count">100 border questions</div>
+                        <div class="deck-progress"><div class="deck-progress-bar" id="progress-borders" style="width:0%"></div></div>
+                    </div>
+                    <div class="deck-card" onclick="showDifficultyModal('rivers')">
+                        <span class="deck-expert-badge">HARD</span>
+                        <div class="deck-icon">🌊</div>
+                        <div class="deck-name">Rivers & Lakes</div>
+                        <div class="deck-count">75 water bodies</div>
+                        <div class="deck-progress"><div class="deck-progress-bar" id="progress-rivers" style="width:0%"></div></div>
+                    </div>
+                    <div class="deck-card" onclick="showDifficultyModal('mountains')">
+                        <span class="deck-expert-badge">HARD</span>
+                        <div class="deck-icon">🏔️</div>
+                        <div class="deck-name">Mountains</div>
+                        <div class="deck-count">60 peak challenges</div>
+                        <div class="deck-progress"><div class="deck-progress-bar" id="progress-mountains" style="width:0%"></div></div>
+                    </div>
+                </div>
+                
+                <div class="study-progress">
+                    <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:600;">
+                        <span>Today's Progress</span>
+                        <span id="today-progress-text">0/10 cards</span>
+                    </div>
+                    <div class="study-progress-bar">
+                        <div class="study-progress-fill" id="today-progress-bar" style="width:0%"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Flashcards Screen -->
+            <div id="flashcards-screen" class="screen">
+                <div class="flashcard-container">
+                    <div class="flashcard" id="flashcard" onclick="flipCard()">
+                        <div class="card-face card-front">
+                            <span class="card-category" id="card-category">CATEGORY</span>
+                            <span class="card-difficulty-badge hard" id="card-diff-badge">HARD</span>
+                            <div class="card-flag" id="card-flag" style="display:none;"></div>
+                            <div class="card-text" id="card-question">Select a deck to begin!</div>
+                            <div class="card-hint" id="card-hint"></div>
+                        </div>
+                        <div class="card-face card-back">
+                            <div class="card-text" id="card-answer">Answer</div>
+                            <div class="fun-fact" id="fun-fact">Interesting fact</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="answer-section" id="answer-section">
+                    <input type="text" id="user-answer" class="answer-input" placeholder="Type your answer..." onkeypress="if(event.key==='Enter') submitAnswer()" autocomplete="off">
+                    <button class="btn btn-primary" onclick="submitAnswer()">Submit</button>
+                </div>
+                
+                <div class="control-buttons" id="control-buttons" style="display:none;">
+                    <button class="btn btn-hard" onclick="rateCard('hard')">😰 Hard</button>
+                    <button class="btn btn-medium" onclick="rateCard('medium')">🤔 Medium</button>
+                    <button class="btn btn-easy" onclick="rateCard('easy')">😎 Easy</button>
+                </div>
+                
+                <div class="action-buttons">
+                    <button class="btn btn-secondary" onclick="skipToFlip()">👁️ Reveal</button>
+                    <button class="btn btn-secondary" onclick="useHint()">💡 Hint</button>
+                    <button class="btn btn-primary" id="next-button" style="display:none;" onclick="nextCard()">Next →</button>
+                </div>
+                
+                <div style="margin-top:20px;text-align:center;font-size:13px;color:#666;">
+                    <div>📚 <span id="cards-today">0</span> studied | 📋 <span id="cards-remaining">0</span> remaining</div>
+                    <div>🎯 Accuracy: <span id="session-accuracy">--</span></div>
+                    <div style="margin-top:5px;">⏱️ Session: <span id="session-time">0:00</span></div>
+                </div>
+            </div>
+            
+            <!-- Map Screen -->
+            <div id="map-screen" class="screen">
+                <div class="map-overlay">
+                    <div class="map-question" id="map-question">Click on: Kazakhstan</div>
+                    <div class="map-score">
+                        <span>🎯 Score: <span id="map-score">0</span></span>
+                        <span>📊 Accuracy: <span id="map-accuracy">0%</span></span>
+                    </div>
+                </div>
+                <div class="map-container">
+                    <div id="map"></div>
+                </div>
+                <div style="display:flex;gap:10px;margin-top:15px;">
+                    <button class="btn btn-primary" onclick="startMapQuiz()">🎮 New Quiz</button>
+                    <button class="btn btn-secondary" onclick="resetMapView()">🔄 Reset View</button>
+                </div>
+            </div>
+            
+            <!-- Profile Screen -->
+            <div id="profile-screen" class="screen">
+                <div class="profile-header">
+                    <div class="profile-avatar">🧠</div>
+                    <div class="profile-name" id="profile-name">Geography Expert</div>
+                    <div class="profile-level">Level <span id="profile-level">1</span> • <span id="rank-title">Novice Explorer</span></div>
+                    <div class="xp-bar">
+                        <div class="xp-fill" id="xp-bar-fill" style="width:0%"></div>
+                    </div>
+                    <div class="xp-text"><span id="current-xp">0</span> / <span id="next-level-xp">100</span> XP to next level</div>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="total-cards">0</div>
+                        <div class="stat-label">Cards Mastered</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="accuracy-rate">0%</div>
+                        <div class="stat-label">Accuracy</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="total-xp">0</div>
+                        <div class="stat-label">Total XP</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="total-streak">0</div>
+                        <div class="stat-label">Day Streak</div>
+                    </div>
+                </div>
+                
+                <h3 style="margin:25px 0 12px;font-size:18px;font-weight:800;">🏆 Achievements</h3>
+                <div class="achievements-grid" id="achievements-grid">
+                    <div class="achievement unlocked" data-achievement="first-card" title="Study your first card">
+                        <div class="achievement-icon">🎯</div>
+                        <div class="achievement-name">First Steps</div>
+                    </div>
+                    <div class="achievement locked" data-achievement="ten-cards" title="Study 10 cards">
+                        <div class="achievement-icon">📚</div>
+                        <div class="achievement-name">Getting Started</div>
+                    </div>
+                    <div class="achievement locked" data-achievement="fifty-cards" title="Study 50 cards">
+                        <div class="achievement-icon">🎓</div>
+                        <div class="achievement-name">Scholar</div>
+                    </div>
+                    <div class="achievement locked" data-achievement="hundred-cards" title="Study 100 cards">
+                        <div class="achievement-icon">🏅</div>
+                        <div class="achievement-name">Century Club</div>
+                    </div>
+                    <div class="achievement locked" data-achievement="week-streak" title="7-day streak">
+                        <div class="achievement-icon">🔥</div>
+                        <div class="achievement-name">Week Warrior</div>
+                    </div>
+                    <div class="achievement locked" data-achievement="month-streak" title="30-day streak">
+                        <div class="achievement-icon">💎</div>
+                        <div class="achievement-name">Dedicated</div>
+                    </div>
+                    <div class="achievement locked" data-achievement="perfect-ten" title="10 correct in a row">
+                        <div class="achievement-icon">💯</div>
+                        <div class="achievement-name">Perfect 10</div>
+                    </div>
+                    <div class="achievement locked" data-achievement="speed-demon" title="Answer in under 3 seconds">
+                        <div class="achievement-icon">⚡</div>
+                        <div class="achievement-name">Speed Demon</div>
+                    </div>
+                    <div class="achievement locked" data-achievement="world-master" title="Complete all decks">
+                        <div class="achievement-icon">🌍</div>
+                        <div class="achievement-name">World Master</div>
+                    </div>
+                </div>
+                
+                <h3 style="margin:25px 0 12px;font-size:18px;font-weight:800;">📊 Weekly Stats</h3>
+                <div class="leaderboard">
+                    <div class="leaderboard-item">
+                        <div class="leaderboard-rank">📅</div>
+                        <div class="leaderboard-name">This Week</div>
+                        <div class="leaderboard-xp" id="weekly-xp">0 XP</div>
+                    </div>
+                    <div class="leaderboard-item">
+                        <div class="leaderboard-rank">📆</div>
+                        <div class="leaderboard-name">Best Week</div>
+                        <div class="leaderboard-xp" id="best-week-xp">0 XP</div>
+                    </div>
+                    <div class="leaderboard-item">
+                        <div class="leaderboard-rank">⏱️</div>
+                        <div class="leaderboard-name">Total Study Time</div>
+                        <div class="leaderboard-xp" id="total-time">0 min</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Settings Screen -->
+            <div id="settings-screen" class="screen">
+                <div class="settings-section">
+                    <h3 class="settings-title">👤 Profile</h3>
+                    <div class="setting-item">
+                        <span class="setting-label">Display Name</span>
+                        <input type="text" id="display-name" value="Explorer" style="padding:8px 12px;border:2px solid var(--primary);border-radius:8px;font-size:14px;width:120px;" onchange="updateDisplayName(this.value)">
+                    </div>
+                    <div class="setting-item">
+                        <span class="setting-label">Age Group</span>
+                        <span style="font-weight:700;color:var(--primary);">40+ Intermediate</span>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h3 class="settings-title">🖥️ Display</h3>
+                    <div class="setting-item">
+                        <span class="setting-label">View Mode</span>
+                        <select class="language-select" id="view-mode-select" onchange="changeViewMode(this.value)">
+                            <option value="auto">Auto-detect</option>
+                            <option value="mobile">📱 Mobile</option>
+                            <option value="tablet">📟 Tablet</option>
+                            <option value="desktop" selected>💻 Desktop</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <span class="setting-label">Dark Mode</span>
+                        <div class="toggle-switch" id="dark-mode-toggle" onclick="toggleDarkMode(this)">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <span class="setting-label">High Contrast</span>
+                        <div class="toggle-switch" id="contrast-toggle" onclick="toggleHighContrast(this)">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h3 class="settings-title">🔊 Sound & Notifications</h3>
+                    <div class="setting-item">
+                        <span class="setting-label">Sound Effects</span>
+                        <div class="toggle-switch active" id="sound-toggle" onclick="toggleSound(this)">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <span class="setting-label">Daily Reminders</span>
+                        <div class="toggle-switch" id="reminder-toggle" onclick="toggleReminders(this)">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h3 class="settings-title">📚 Study Settings</h3>
+                    <div class="setting-item">
+                        <span class="setting-label">Cards per Session</span>
+                        <select class="language-select" id="cards-per-session" onchange="updateCardsPerSession(this.value)">
+                            <option value="10">10 cards</option>
+                            <option value="20" selected>20 cards</option>
+                            <option value="30">30 cards</option>
+                            <option value="50">50 cards</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <span class="setting-label">Show Hints</span>
+                        <div class="toggle-switch active" id="hints-toggle" onclick="toggleHints(this)">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <span class="setting-label">Spaced Repetition</span>
+                        <div class="toggle-switch active" id="sr-toggle" onclick="toggleSpacedRepetition(this)">
+                            <div class="toggle-slider"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h3 class="settings-title">🌐 Language</h3>
+                    <div class="setting-item">
+                        <span class="setting-label">App Language</span>
+                        <select class="language-select" onchange="changeLanguage(this.value)">
+                            <option value="en">English</option>
+                            <option value="es">Español</option>
+                            <option value="fr">Français</option>
+                            <option value="de">Deutsch</option>
+                            <option value="pt">Português</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h3 class="settings-title">💾 Data</h3>
+                    <button class="btn btn-primary" onclick="exportProgress()" style="margin-bottom:10px;">📤 Export Progress</button>
+                    <button class="btn btn-secondary" onclick="importProgress()" style="margin-bottom:10px;">📥 Import Progress</button>
+                    <button class="btn" style="background:var(--danger);color:white;" onclick="resetProgress()">🗑️ Reset All Progress</button>
+                </div>
+                
+                <div style="text-align:center;margin-top:30px;opacity:0.6;font-size:12px;">
+                    <p>GeoFlash World Expert Edition v2.0</p>
+                    <p>© 2025 Educational Geography App</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Difficulty Modal -->
+    <div class="difficulty-modal" id="difficulty-modal">
+        <div class="difficulty-content">
+            <div class="difficulty-title">⚡ Select Difficulty</div>
+            <div class="difficulty-badge">For 40+ Intermediate Learners</div>
+            <div class="difficulty-subtitle">
+                Choose your challenge level for<br><strong id="selected-deck-name">Countries</strong>
+            </div>
+            <div class="difficulty-options">
+                <button class="difficulty-btn easy" onclick="selectDifficulty('easy')">
+                    <div>
+                        <div>😌 Easy Mode</div>
+                        <div class="difficulty-info">Common but tricky questions</div>
+                    </div>
+                    <span>+15 XP</span>
+                </button>
+                <button class="difficulty-btn medium" onclick="selectDifficulty('medium')">
+                    <div>
+                        <div>🤔 Medium Mode</div>
+                        <div class="difficulty-info">Lesser-known places & facts</div>
+                    </div>
+                    <span>+25 XP</span>
+                </button>
+                <button class="difficulty-btn hard" onclick="selectDifficulty('hard')">
+                    <div>
+                        <div>🔥 Hard Mode</div>
+                        <div class="difficulty-info">Expert-level obscure trivia</div>
+                    </div>
+                    <span>+50 XP</span>
+                </button>
+            </div>
+            <button class="difficulty-cancel" onclick="closeDifficultyModal()">Cancel</button>
+        </div>
+    </div>
+    
+    <!-- Modal -->
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <h2 class="modal-title" id="modal-title">🎉</h2>
+            <p class="modal-text" id="modal-text">Message</p>
+            <button class="btn btn-primary" onclick="closeModal()">Continue</button>
+        </div>
+    </div>
+    
+    <!-- View Mode Indicator -->
+    <div class="view-indicator" id="view-indicator">Desktop Mode</div>
+    
+    <!-- PWA Install Button -->
+    <button class="install-button" id="install-button" onclick="installPWA()">📱 Install App</button>
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // ==================== APP STATE ====================
+        const appState = {
+            currentScreen: 'home',
+            currentDeck: null,
+            currentDifficulty: 'medium',
+            currentCard: null,
+            cardQueue: [],
+            pendingDeck: null,
+            sessionStartTime: null,
+            sessionTimer: null,
+            correctStreak: 0,
+            hintsUsed: 0,
+            viewMode: 'desktop',
+            userStats: {
+                xp: 0,
+                level: 1,
+                streak: 0,
+                cardsStudied: 0,
+                totalCards: 0,
+                correctAnswers: 0,
+                incorrectAnswers: 0,
+                totalStudyTime: 0,
+                weeklyXP: 0,
+                bestWeekXP: 0,
+                lastStudyDate: null,
+                achievements: ['first-card'],
+                deckProgress: {}
+            },
+            mapQuiz: { score: 0, total: 0, currentCountry: null },
+            settings: {
+                darkMode: false,
+                highContrast: false,
+                soundEnabled: true,
+                remindersEnabled: false,
+                hintsEnabled: true,
+                spacedRepetition: true,
+                cardsPerSession: 20,
+                displayName: 'Explorer',
+                language: 'en'
+            },
+            spacedRepetition: {}
+        };
+        
+        // ==================== EXPERT GEOGRAPHY DATA ====================
+        const expertData = {
+            countries: {
+                easy: [
+                    { q: "What is the capital of France?", a: "Paris", hint: "City of Light", fact: "Paris has been France's capital since 987 AD.", flag: "🇫🇷" },
+                    { q: "What is the capital of Japan?", a: "Tokyo", hint: "Most populous metro area", fact: "Tokyo was formerly known as Edo until 1868.", flag: "🇯🇵" },
+                    { q: "What is the capital of Australia?", a: "Canberra", hint: "Not Sydney or Melbourne!", fact: "Canberra was purpose-built as capital in 1913.", flag: "🇦🇺" },
+                    { q: "What is the capital of Brazil?", a: "Brasília", hint: "Planned city built in 1960", fact: "Brasília replaced Rio de Janeiro as capital.", flag: "🇧🇷" },
+                    { q: "What is the capital of Canada?", a: "Ottawa", hint: "Ontario-Quebec border", fact: "Queen Victoria chose Ottawa in 1857.", flag: "🇨🇦" },
+                    { q: "What is the capital of Germany?", a: "Berlin", hint: "Reunified in 1990", fact: "Berlin was divided 1961-1989 by a wall.", flag: "🇩🇪" },
+                    { q: "What is the capital of Italy?", a: "Rome", hint: "The Eternal City", fact: "Rome was founded in 753 BC according to legend.", flag: "🇮🇹" },
+                    { q: "What is the capital of Spain?", a: "Madrid", hint: "Center of Iberian Peninsula", fact: "Madrid is Europe's highest capital at 650m.", flag: "🇪🇸" },
+                    { q: "What is the capital of South Korea?", a: "Seoul", hint: "Han River city", fact: "Seoul means 'capital' in Korean.", flag: "🇰🇷" },
+                    { q: "What is the capital of Turkey?", a: "Ankara", hint: "Not Istanbul!", fact: "Ankara became capital in 1923 under Atatürk.", flag: "🇹🇷" }
+                ],
+                medium: [
+                    { q: "What is the capital of Myanmar?", a: "Naypyidaw", hint: "Changed from Yangon in 2006", fact: "Naypyidaw means 'Abode of Kings'.", flag: "🇲🇲" },
+                    { q: "What is the capital of Kazakhstan?", a: "Astana", hint: "Renamed from Nur-Sultan 2022", fact: "Astana replaced Almaty in 1997.", flag: "🇰🇿" },
+                    { q: "What is the capital of Sri Lanka?", a: "Sri Jayawardenepura Kotte", hint: "Legislative capital", fact: "One of the longest capital city names.", flag: "🇱🇰" },
+                    { q: "What is the capital of Nigeria?", a: "Abuja", hint: "Replaced Lagos in 1991", fact: "Chosen for its central location.", flag: "🇳🇬" },
+                    { q: "What is the capital of Pakistan?", a: "Islamabad", hint: "Built in the 1960s", fact: "Replaced Karachi as capital in 1967.", flag: "🇵🇰" },
+                    { q: "What is the capital of Tanzania?", a: "Dodoma", hint: "Not Dar es Salaam!", fact: "Became capital in 1996.", flag: "🇹🇿" },
+                    { q: "What is the capital of Ivory Coast?", a: "Yamoussoukro", hint: "Not Abidjan!", fact: "Has world's largest church by area.", flag: "🇨🇮" },
+                    { q: "What is the capital of Bolivia?", a: "Sucre", hint: "Constitutional capital", fact: "La Paz is seat of government.", flag: "🇧🇴" },
+                    { q: "What is the capital of Belize?", a: "Belmopan", hint: "Replaced Belize City", fact: "One of smallest capital cities.", flag: "🇧🇿" },
+                    { q: "What is the capital of Malawi?", a: "Lilongwe", hint: "Replaced Zomba 1975", fact: "Named after Lilongwe River.", flag: "🇲🇼" }
+                ],
+                hard: [
+                    { q: "What is the capital of Nauru?", a: "Yaren", hint: "World's smallest republic", fact: "Nauru has no official capital.", flag: "🇳🇷" },
+                    { q: "What is the capital of Palau?", a: "Ngerulmud", hint: "In Melekeok state", fact: "Replaced Koror in 2006.", flag: "🇵🇼" },
+                    { q: "What is the capital of Tuvalu?", a: "Funafuti", hint: "Atoll nation", fact: "One of world's smallest capitals.", flag: "🇹🇻" },
+                    { q: "What is the capital of Vanuatu?", a: "Port Vila", hint: "On Efate island", fact: "Named after chief Vila.", flag: "🇻🇺" },
+                    { q: "What is the capital of Kiribati?", a: "South Tarawa", hint: "Spans date line", fact: "Only country in all 4 hemispheres.", flag: "🇰🇮" },
+                    { q: "What is the capital of Micronesia?", a: "Palikir", hint: "On Pohnpei island", fact: "Became capital in 1989.", flag: "🇫🇲" },
+                    { q: "What is the capital of Liechtenstein?", a: "Vaduz", hint: "Alpine microstate", fact: "Vaduz Castle overlooks the city.", flag: "🇱🇮" },
+                    { q: "What is the capital of Eswatini?", a: "Mbabane", hint: "Formerly Swaziland", fact: "Lobamba is royal capital.", flag: "🇸🇿" },
+                    { q: "What is the capital of Comoros?", a: "Moroni", hint: "Indian Ocean islands", fact: "On Grande Comore island.", flag: "🇰🇲" },
+                    { q: "What is the capital of San Marino?", a: "San Marino", hint: "Same as country name", fact: "World's oldest republic (301 AD).", flag: "🇸🇲" }
+                ]
+            },
+            capitals: {
+                easy: [
+                    { q: "Paris is the capital of?", a: "France", hint: "Western Europe", fact: "Most visited country." },
+                    { q: "Tokyo is the capital of?", a: "Japan", hint: "Island nation, East Asia", fact: "6,852 islands." },
+                    { q: "Canberra is the capital of?", a: "Australia", hint: "Oceania continent", fact: "Both country and continent." },
+                    { q: "Ottawa is the capital of?", a: "Canada", hint: "North America", fact: "World's second-largest country." },
+                    { q: "Berlin is the capital of?", a: "Germany", hint: "Central Europe", fact: "Most populous EU country." },
+                    { q: "Madrid is the capital of?", a: "Spain", hint: "Iberian Peninsula", fact: "47 UNESCO World Heritage Sites." },
+                    { q: "Rome is the capital of?", a: "Italy", hint: "Mediterranean boot shape", fact: "Vatican City is inside Rome." },
+                    { q: "Cairo is the capital of?", a: "Egypt", hint: "Nile River, pyramids", fact: "Largest city in Africa." }
+                ],
+                medium: [
+                    { q: "Naypyidaw is the capital of?", a: "Myanmar", hint: "SE Asia, formerly Burma", fact: "Changed name from Burma 1989." },
+                    { q: "Belmopan is the capital of?", a: "Belize", hint: "Central America", fact: "Only Central American country with English official." },
+                    { q: "Dodoma is the capital of?", a: "Tanzania", hint: "East Africa", fact: "Contains Mount Kilimanjaro." },
+                    { q: "Yamoussoukro is the capital of?", a: "Ivory Coast", hint: "West Africa", fact: "Also called Côte d'Ivoire." },
+                    { q: "Thimphu is the capital of?", a: "Bhutan", hint: "Himalayan kingdom", fact: "Measures Gross National Happiness." },
+                    { q: "Vientiane is the capital of?", a: "Laos", hint: "Landlocked SE Asia", fact: "Most heavily bombed per capita." },
+                    { q: "Bishkek is the capital of?", a: "Kyrgyzstan", hint: "Central Asian -stan", fact: "Over 90% mountainous." },
+                    { q: "Ashgabat is the capital of?", a: "Turkmenistan", hint: "Central Asia, Caspian Sea", fact: "Known for white marble buildings." }
+                ],
+                hard: [
+                    { q: "Ngerulmud is the capital of?", a: "Palau", hint: "Pacific islands", fact: "World's first shark sanctuary." },
+                    { q: "Funafuti is the capital of?", a: "Tuvalu", hint: "Pacific, tiny nation", fact: "Earns money from .tv domain." },
+                    { q: "Palikir is the capital of?", a: "Micronesia", hint: "Pacific, US associated", fact: "Spans 2,700km across Pacific." },
+                    { q: "Yaren is the de facto capital of?", a: "Nauru", hint: "Smallest republic", fact: "Once world's richest per capita." },
+                    { q: "Majuro is the capital of?", a: "Marshall Islands", hint: "Pacific, nuclear testing", fact: "US conducted 67 nuclear tests." },
+                    { q: "Alofi is the capital of?", a: "Niue", hint: "Free assoc. with NZ", fact: "First country with free nationwide WiFi." },
+                    { q: "Tarawa is the capital of?", a: "Kiribati", hint: "All 4 hemispheres", fact: "Will likely be underwater by 2100." },
+                    { q: "Apia is the capital of?", a: "Samoa", hint: "Pacific island nation", fact: "Robert Louis Stevenson's grave there." }
+                ]
+            },
+            flags: {
+                easy: [
+                    { q: "🇫🇷", a: "France", hint: "Blue, white, red vertical", fact: "Tricolore adopted 1794.", isFlag: true },
+                    { q: "🇯🇵", a: "Japan", hint: "Red circle on white", fact: "Called Nisshōki (sun-mark flag).", isFlag: true },
+                    { q: "🇺🇸", a: "United States", hint: "Stars and stripes", fact: "13 stripes for colonies.", isFlag: true },
+                    { q: "🇬🇧", a: "United Kingdom", hint: "Union Jack", fact: "Combines 3 patron saints.", isFlag: true },
+                    { q: "🇨🇦", a: "Canada", hint: "Maple leaf", fact: "Adopted 1965.", isFlag: true },
+                    { q: "🇧🇷", a: "Brazil", hint: "Green, yellow diamond", fact: "Stars show night sky over Rio.", isFlag: true },
+                    { q: "🇦🇺", a: "Australia", hint: "Southern Cross stars", fact: "Union Jack in corner.", isFlag: true },
+                    { q: "🇮🇳", a: "India", hint: "Orange, white, green, wheel", fact: "Ashoka Chakra has 24 spokes.", isFlag: true }
+                ],
+                medium: [
+                    { q: "🇱🇮", a: "Liechtenstein", hint: "Blue/red with crown", fact: "Added crown to differ from Haiti.", isFlag: true },
+                    { q: "🇲🇨", a: "Monaco", hint: "Red and white horizontal", fact: "Almost identical to Indonesia.", isFlag: true },
+                    { q: "🇮🇩", a: "Indonesia", hint: "Red and white horizontal", fact: "Called Sang Saka Merah-Putih.", isFlag: true },
+                    { q: "🇷🇴", a: "Romania", hint: "Blue, yellow, red vertical", fact: "Almost identical to Chad.", isFlag: true },
+                    { q: "🇹🇩", a: "Chad", hint: "Blue, yellow, red vertical", fact: "Slightly darker blue than Romania.", isFlag: true },
+                    { q: "🇲🇱", a: "Mali", hint: "Green, yellow, red vertical", fact: "Pan-African colors.", isFlag: true },
+                    { q: "🇬🇳", a: "Guinea", hint: "Red, yellow, green vertical", fact: "Same colors as Mali reversed.", isFlag: true },
+                    { q: "🇸🇳", a: "Senegal", hint: "Green, yellow, red + star", fact: "Star distinguishes from Mali.", isFlag: true }
+                ],
+                hard: [
+                    { q: "🇻🇺", a: "Vanuatu", hint: "Y-shape, boar's tusk", fact: "Tusk represents prosperity.", isFlag: true },
+                    { q: "🇰🇮", a: "Kiribati", hint: "Frigate bird, waves", fact: "17 rays for 16 islands + Banaba.", isFlag: true },
+                    { q: "🇲🇭", a: "Marshall Islands", hint: "Blue, orange/white stripes", fact: "24 points for municipalities.", isFlag: true },
+                    { q: "🇫🇲", a: "Micronesia", hint: "Blue with 4 stars", fact: "Stars for 4 federated states.", isFlag: true },
+                    { q: "🇵🇼", a: "Palau", hint: "Blue with yellow circle", fact: "Circle represents full moon.", isFlag: true },
+                    { q: "🇳🇷", a: "Nauru", hint: "Blue, yellow stripe, star", fact: "12 points for 12 tribes.", isFlag: true },
+                    { q: "🇹🇻", a: "Tuvalu", hint: "Light blue, Union Jack", fact: "9 stars for 9 islands.", isFlag: true },
+                    { q: "🇸🇧", a: "Solomon Islands", hint: "Blue/green diagonal", fact: "5 stars for 5 island groups.", isFlag: true }
+                ]
+            },
+            borders: {
+                easy: [
+                    { q: "Which country borders France to the southwest?", a: "Spain", hint: "Pyrenees mountains", fact: "Border is 623 km long." },
+                    { q: "Which large country borders USA to the north?", a: "Canada", hint: "Longest international border", fact: "8,891 km including Alaska." },
+                    { q: "Which country borders Germany to the east?", a: "Poland", hint: "Oder-Neisse line", fact: "Established after WWII." },
+                    { q: "Which country borders Italy to the north?", a: "Switzerland", hint: "Alpine border", fact: "Also Austria, France, Slovenia." },
+                    { q: "Which ocean borders the USA to the west?", a: "Pacific", hint: "Largest ocean", fact: "Covers more area than all land." },
+                    { q: "Which country borders Russia to the south?", a: "China", hint: "World's most populous", fact: "4,209 km shared border." }
+                ],
+                medium: [
+                    { q: "How many countries border China?", a: "14", hint: "Most borders tied with Russia", fact: "Includes North Korea, Vietnam, India." },
+                    { q: "Which country is surrounded by South Africa?", a: "Lesotho", hint: "Mountain kingdom", fact: "Entirely above 1,400m elevation." },
+                    { q: "Which country borders Caspian Sea AND Persian Gulf?", a: "Iran", hint: "Middle East", fact: "5,894 km of borders." },
+                    { q: "Which European country borders Russia AND Norway?", a: "Finland", hint: "Nordic country", fact: "1,340 km border with Russia." },
+                    { q: "How many countries border Russia?", a: "14", hint: "16 if disputed included", fact: "60,933 km total border." },
+                    { q: "Which country borders both France and Brazil?", a: "Suriname", hint: "Via French Guiana", fact: "French Guiana borders Brazil." }
+                ],
+                hard: [
+                    { q: "Which country borders DRC starting with 'Z'?", a: "Zambia", hint: "Southern neighbor", fact: "DRC borders 9 countries." },
+                    { q: "Which tiny country is surrounded by Italy?", a: "San Marino", hint: "World's oldest republic", fact: "Also Vatican City." },
+                    { q: "What country has shortest border with Spain?", a: "Gibraltar", hint: "British territory", fact: "1.2 km at La Línea." },
+                    { q: "What borders Togo to the east?", a: "Benin", hint: "Former Dahomey", fact: "Both thin coastal countries." },
+                    { q: "Which Central Asian country borders China AND Iran?", a: "Afghanistan", hint: "Wakhan Corridor", fact: "Corridor is 350km long." },
+                    { q: "What separates Kaliningrad from mainland Russia?", a: "Lithuania", hint: "And Belarus", fact: "Was German Königsberg until 1945." }
+                ]
+            },
+            rivers: {
+                easy: [
+                    { q: "Which river flows through London?", a: "Thames", hint: "Major English river", fact: "346 km long." },
+                    { q: "Which river flows through Paris?", a: "Seine", hint: "French river", fact: "777 km long." },
+                    { q: "What is the longest river in Africa?", a: "Nile", hint: "Flows through Egypt", fact: "6,650 km, world's longest." },
+                    { q: "What is the largest river by volume?", a: "Amazon", hint: "South America", fact: "20% of all freshwater discharge." },
+                    { q: "Which river flows through Cairo?", a: "Nile", hint: "Egyptian capital", fact: "Nile Delta is highly fertile." },
+                    { q: "Which river is longest in USA?", a: "Missouri", hint: "Flows into Mississippi", fact: "3,767 km long." }
+                ],
+                medium: [
+                    { q: "Longest river entirely within India?", a: "Godavari", hint: "Dakshin Ganga", fact: "1,465 km, second-longest in India." },
+                    { q: "Which river forms Germany-Poland border?", a: "Oder", hint: "Oder-Neisse line", fact: "Also spelled Odra in Polish." },
+                    { q: "What is longest river in Southeast Asia?", a: "Mekong", hint: "6 countries", fact: "4,350 km long." },
+                    { q: "Which river flows through Baghdad?", a: "Tigris", hint: "Mesopotamia", fact: "Part of Fertile Crescent." },
+                    { q: "Africa's second-longest river?", a: "Congo", hint: "Deepest river", fact: "4,700 km, also called Zaire." },
+                    { q: "River through Vienna, Budapest, Belgrade?", a: "Danube", hint: "Europe's second longest", fact: "Flows through 10 countries." }
+                ],
+                hard: [
+                    { q: "Longest river in Australia?", a: "Murray", hint: "NSW-Victoria border", fact: "2,508 km with Darling." },
+                    { q: "Largest drainage basin in Africa?", a: "Congo", hint: "Rainforest river", fact: "3.7 million km² basin." },
+                    { q: "Which river carved Grand Canyon?", a: "Colorado", hint: "Southwest USA", fact: "Carved over 5 million years." },
+                    { q: "Longest tributary of Amazon?", a: "Madeira", hint: "3,250 km", fact: "Also called Rio Madeira." },
+                    { q: "Longest river in Central Asia?", a: "Syr Darya", hint: "Flows to Aral Sea", fact: "2,212 km, ancient Jaxartes." },
+                    { q: "River from Switzerland to North Sea?", a: "Rhine", hint: "Major shipping route", fact: "1,233 km long." }
+                ]
+            },
+            mountains: {
+                easy: [
+                    { q: "Highest mountain in the world?", a: "Mount Everest", hint: "Nepal/China border", fact: "8,849 m (29,032 ft)." },
+                    { q: "Highest mountain in Africa?", a: "Kilimanjaro", hint: "Tanzania", fact: "5,895 m, dormant volcano." },
+                    { q: "Highest mountain in Europe?", a: "Mount Elbrus", hint: "Russia/Caucasus", fact: "5,642 m, dormant volcano." },
+                    { q: "Highest mountain in North America?", a: "Denali", hint: "Alaska", fact: "6,190 m, formerly McKinley." },
+                    { q: "Highest mountain in Japan?", a: "Mount Fuji", hint: "Near Tokyo", fact: "3,776 m, last erupted 1707." },
+                    { q: "Highest mountain in Western Europe?", a: "Mont Blanc", hint: "France/Italy Alps", fact: "4,808 m high." }
+                ],
+                medium: [
+                    { q: "Highest mountain in South America?", a: "Aconcagua", hint: "Argentina Andes", fact: "6,961 m, highest outside Asia." },
+                    { q: "Highest mountain in Oceania?", a: "Puncak Jaya", hint: "Indonesia/Papua", fact: "4,884 m, Carstensz Pyramid." },
+                    { q: "Second-highest mountain in world?", a: "K2", hint: "Pakistan/China", fact: "8,611 m, more dangerous than Everest." },
+                    { q: "Highest mountain entirely in Italy?", a: "Gran Paradiso", hint: "Alps, national park", fact: "4,061 m high." },
+                    { q: "Highest active volcano in Europe?", a: "Mount Etna", hint: "Sicily, Italy", fact: "3,357 m, very active." },
+                    { q: "Highest mountain in Scandinavia?", a: "Galdhøpiggen", hint: "Norway", fact: "2,469 m high." }
+                ],
+                hard: [
+                    { q: "Highest unclimbed mountain?", a: "Gangkhar Puensum", hint: "Bhutan, climbing banned", fact: "7,570 m, sacred mountain." },
+                    { q: "Highest mountain in Antarctica?", a: "Mount Vinson", hint: "Ellsworth Mountains", fact: "4,892 m high." },
+                    { q: "Which 8000m peak is 'Savage Mountain'?", a: "K2", hint: "High fatality rate", fact: "1 in 4 climbers die attempting." },
+                    { q: "Tallest mountain base to peak?", a: "Mauna Kea", hint: "Hawaii, mostly underwater", fact: "10,211 m from ocean floor." },
+                    { q: "Highest mountain in Siberia?", a: "Belukha", hint: "Altai Mountains", fact: "4,506 m, sacred to Buddhists." },
+                    { q: "Mountain farthest from Earth's center?", a: "Chimborazo", hint: "Ecuador, equatorial bulge", fact: "6,384 km vs Everest's 6,382 km." }
+                ]
+            }
+        };
+        
+        // ==================== INITIALIZATION ====================
+        function initApp() {
+            loadFromLocalStorage();
+            initializeViewMode();
+            updateAllUI();
+            checkStreak();
+            setTimeout(initializeMap, 100);
+            checkPWA();
+            setupKeyboardShortcuts();
+            console.log('GeoFlash Expert initialized!');
+        }
+        
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('geoflash_expert_v2');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                Object.assign(appState.userStats, parsed.userStats || {});
+                Object.assign(appState.settings, parsed.settings || {});
+                Object.assign(appState.spacedRepetition, parsed.spacedRepetition || {});
+                appState.viewMode = parsed.viewMode || 'desktop';
+            }
+        }
+        
+        function saveToLocalStorage() {
+            localStorage.setItem('geoflash_expert_v2', JSON.stringify({
+                userStats: appState.userStats,
+                settings: appState.settings,
+                spacedRepetition: appState.spacedRepetition,
+                viewMode: appState.viewMode
+            }));
+        }
+        
+        // ==================== VIEW MODE ====================
+        function initializeViewMode() {
+            setViewMode(appState.viewMode || 'desktop');
+            applySettingsToggles();
+        }
+        
+        function setViewMode(mode) {
+            document.body.classList.remove('mobile-mode', 'tablet-mode', 'desktop-mode');
+            document.body.classList.add(`${mode}-mode`);
+            appState.viewMode = mode;
+            
+            const icons = { mobile: '📱', tablet: '📟', desktop: '💻' };
+            const texts = { mobile: 'Mobile', tablet: 'Tablet', desktop: 'Desktop' };
+            
+            document.getElementById('view-icon').textContent = icons[mode];
+            document.getElementById('view-text').textContent = texts[mode];
+            
+            const select = document.getElementById('view-mode-select');
+            if (select) select.value = mode;
+            
+            showViewIndicator(mode);
+            if (window.map) setTimeout(() => map.invalidateSize(), 100);
+            saveToLocalStorage();
+        }
+        
+        function toggleViewMode() {
+            const modes = ['mobile', 'tablet', 'desktop'];
+            const current = modes.indexOf(appState.viewMode);
+            setViewMode(modes[(current + 1) % 3]);
+        }
+        
+        function changeViewMode(mode) {
+            if (mode === 'auto') {
+                const w = window.innerWidth;
+                mode = w <= 480 ? 'mobile' : w <= 768 ? 'tablet' : 'desktop';
+            }
+            setViewMode(mode);
+        }
+        
+        function showViewIndicator(mode) {
+            const ind = document.getElementById('view-indicator');
+            ind.textContent = `${mode.charAt(0).toUpperCase() + mode.slice(1)} Mode`;
+            ind.classList.add('show');
+            setTimeout(() => ind.classList.remove('show'), 2000);
+        }
+        
+        // ==================== SCREEN NAVIGATION ====================
+        function switchScreen(name) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            
+            document.getElementById(`${name}-screen`).classList.add('active');
+            const idx = ['home', 'flashcards', 'map', 'profile', 'settings'].indexOf(name);
+            if (idx >= 0) document.querySelectorAll('.nav-tab')[idx].classList.add('active');
+            
+            appState.currentScreen = name;
+            
+            if (name === 'map' && window.map) setTimeout(() => map.invalidateSize(), 100);
+            if (name === 'profile') updateProfileUI();
+        }
+        
+        // ==================== DIFFICULTY MODAL ====================
+        function showDifficultyModal(deckType) {
+            appState.pendingDeck = deckType;
+            const names = {
+                countries: 'Countries & Capitals',
+                capitals: 'Capital Cities',
+                flags: 'World Flags',
+                borders: 'Borders & Neighbors',
+                rivers: 'Rivers & Lakes',
+                mountains: 'Mountains & Peaks'
+            };
+            document.getElementById('selected-deck-name').textContent = names[deckType] || deckType;
+            document.getElementById('difficulty-modal').classList.add('active');
+        }
+        
+        function closeDifficultyModal() {
+            document.getElementById('difficulty-modal').classList.remove('active');
+        }
+        
+        function selectDifficulty(difficulty) {
+            appState.currentDifficulty = difficulty;
+            closeDifficultyModal();
+            selectDeck(appState.pendingDeck);
+        }
+        
+        // ==================== DECK & CARD MANAGEMENT ====================
+        function selectDeck(deckType) {
+            appState.currentDeck = deckType;
+            loadDeckCards(deckType, appState.currentDifficulty);
+            switchScreen('flashcards');
+            startSessionTimer();
+        }
+        
+        function loadDeckCards(deckType, difficulty) {
+            const deck = expertData[deckType];
+            if (!deck) return;
+            
+            const cards = deck[difficulty] || deck.medium;
+            appState.cardQueue = cards.map(c => ({
+                question: c.q,
+                answer: c.a,
+                hint: c.hint,
+                funFact: c.fact,
+                type: deckType,
+                difficulty: difficulty,
+                isFlag: c.isFlag || false,
+                flag: c.flag || ''
+            }));
+            
+            // Apply spaced repetition sorting if enabled
+            if (appState.settings.spacedRepetition) {
+                appState.cardQueue.sort((a, b) => {
+                    const aKey = `${a.type}_${a.question}`;
+                    const bKey = `${b.type}_${b.question}`;
+                    const aNext = appState.spacedRepetition[aKey]?.nextReview || 0;
+                    const bNext = appState.spacedRepetition[bKey]?.nextReview || 0;
+                    return aNext - bNext;
+                });
+            } else {
+                appState.cardQueue.sort(() => Math.random() - 0.5);
+            }
+            
+            // Limit to cards per session
+            appState.cardQueue = appState.cardQueue.slice(0, appState.settings.cardsPerSession);
+            
+            appState.correctStreak = 0;
+            loadNextCard();
+        }
+        
+        function loadNextCard() {
+            if (appState.cardQueue.length === 0) {
+                showCompletionMessage();
+                return;
+            }
+            
+            appState.currentCard = appState.cardQueue[0];
+            displayCard(appState.currentCard);
+            
+            document.getElementById('flashcard').classList.remove('flipped');
+            const input = document.getElementById('user-answer');
+            input.value = '';
+            input.classList.remove('correct', 'incorrect');
+            input.disabled = false;
+            
+            document.getElementById('answer-section').style.display = 'flex';
+            document.getElementById('control-buttons').style.display = 'none';
+            document.getElementById('next-button').style.display = 'none';
+            document.getElementById('card-hint').style.opacity = appState.settings.hintsEnabled ? '0.8' : '0';
+            
+            updateCardsRemaining();
+        }
+        
+        function displayCard(card) {
+            const flagEl = document.getElementById('card-flag');
+            const questionEl = document.getElementById('card-question');
+            
+            if (card.isFlag) {
+                flagEl.textContent = card.question;
+                flagEl.style.display = 'block';
+                questionEl.textContent = "Which country's flag is this?";
+            } else {
+                flagEl.style.display = 'none';
+                questionEl.textContent = card.question;
+            }
+            
+            document.getElementById('card-answer').textContent = card.answer;
+            document.getElementById('card-hint').textContent = `💡 ${card.hint}`;
+            document.getElementById('fun-fact').textContent = card.funFact;
+            document.getElementById('card-category').textContent = card.type.toUpperCase();
+            
+            const badge = document.getElementById('card-diff-badge');
+            badge.textContent = card.difficulty.toUpperCase();
+            badge.className = `card-difficulty-badge ${card.difficulty}`;
+            
+            setTimeout(() => document.getElementById('user-answer').focus(), 100);
+        }
+        
+        function flipCard() {
+            document.getElementById('flashcard').classList.toggle('flipped');
+            if (appState.settings.soundEnabled) playSound('flip');
+        }
+        
+        // ==================== ANSWER HANDLING ====================
+        function submitAnswer() {
+            const input = document.getElementById('user-answer');
+            const userAnswer = input.value.trim();
+            
+            if (!userAnswer) {
+                showNotification('Enter an answer!', 'error');
+                return;
+            }
+            
+            const correct = checkAnswer(userAnswer, appState.currentCard.answer);
+            input.disabled = true;
+            
+            if (correct) handleCorrectAnswer();
+            else handleIncorrectAnswer();
+        }
+        
+        function checkAnswer(user, correct) {
+            const normalize = s => s.toLowerCase().replace(/[.,!?;:'"()-]/g, '').replace(/\s+/g, ' ').trim();
+            const u = normalize(user);
+            const c = normalize(correct);
+            
+            if (u === c) return true;
+            
+            // Check numeric
+            const uNum = user.match(/\d+/);
+            const cNum = correct.match(/\d+/);
+            if (uNum && cNum && uNum[0] === cNum[0]) return true;
+            
+            // Fuzzy match (80%)
+            let matches = 0;
+            const shorter = u.length < c.length ? u : c;
+            const longer = u.length < c.length ? c : u;
+            for (let i = 0; i < shorter.length; i++) {
+                if (longer.includes(shorter[i])) matches++;
+            }
+            return matches / longer.length >= 0.8;
+        }
+        
+        function handleCorrectAnswer() {
+            document.getElementById('user-answer').classList.add('correct');
+            
+            const xpTable = { easy: 15, medium: 25, hard: 50 };
+            const xp = xpTable[appState.currentDifficulty] || 25;
+            
+            appState.userStats.xp += xp;
+            appState.userStats.weeklyXP += xp;
+            appState.userStats.cardsStudied++;
+            appState.userStats.totalCards++;
+            appState.userStats.correctAnswers++;
+            appState.correctStreak++;
+            
+            updateSpacedRepetition(appState.currentCard, 'easy');
+            showAnswerFeedback(true, xp);
+            
+            setTimeout(() => document.getElementById('flashcard').classList.add('flipped'), 500);
+            setTimeout(() => document.getElementById('next-button').style.display = 'block', 1000);
+            
+            if (appState.settings.soundEnabled) playSound('correct');
+            
+            updateAllUI();
+            checkLevelUp();
+            checkAchievements();
+            saveToLocalStorage();
+        }
+        
+        function handleIncorrectAnswer() {
+            document.getElementById('user-answer').classList.add('incorrect');
+            
+            appState.userStats.xp = Math.max(0, appState.userStats.xp - 10);
+            appState.userStats.cardsStudied++;
+            appState.userStats.totalCards++;
+            appState.userStats.incorrectAnswers++;
+            appState.correctStreak = 0;
+            
+            updateSpacedRepetition(appState.currentCard, 'hard');
+            showAnswerFeedback(false, 10);
+            
+            setTimeout(() => document.getElementById('flashcard').classList.add('flipped'), 1000);
+            setTimeout(() => {
+                document.getElementById('control-buttons').style.display = 'flex';
+                document.getElementById('answer-section').style.display = 'none';
+            }, 1500);
+            
+            if (appState.settings.soundEnabled) playSound('incorrect');
+            
+            updateAllUI();
+            saveToLocalStorage();
+        }
+        
+        function showAnswerFeedback(correct, xp) {
+            const feedback = document.createElement('div');
+            feedback.className = 'answer-feedback';
+            feedback.innerHTML = correct
+                ? `<div class="feedback-correct">✓ Correct!</div><div class="feedback-xp" style="color:var(--success)">+${xp} XP</div>${appState.correctStreak >= 3 ? `<div style="margin-top:5px">🔥 ${appState.correctStreak} streak!</div>` : ''}`
+                : `<div class="feedback-incorrect">✗ Wrong</div><div class="feedback-xp" style="color:var(--danger)">-${xp} XP</div><div style="margin-top:10px;font-size:14px">Answer: ${appState.currentCard.answer}</div>`;
+            
+            document.querySelector('.flashcard-container').appendChild(feedback);
+            setTimeout(() => feedback.remove(), 2500);
+        }
+        
+        function skipToFlip() {
+            document.getElementById('answer-section').style.display = 'none';
+            document.getElementById('flashcard').classList.add('flipped');
+            document.getElementById('control-buttons').style.display = 'flex';
+            appState.userStats.xp = Math.max(0, appState.userStats.xp - 5);
+            appState.correctStreak = 0;
+            showNotification('-5 XP for skipping', 'warning');
+            updateAllUI();
+            saveToLocalStorage();
+        }
+        
+        function useHint() {
+            const hint = document.getElementById('card-hint');
+            hint.style.opacity = '1';
+            hint.style.fontWeight = 'bold';
+            appState.hintsUsed++;
+            showNotification('Hint revealed!', 'info');
+        }
+        
+        function nextCard() {
+            appState.cardQueue.shift();
+            loadNextCard();
+        }
+        
+        function rateCard(difficulty) {
+            updateSpacedRepetition(appState.currentCard, difficulty);
+            const bonus = { hard: 15, medium: 10, easy: 5 }[difficulty] || 0;
+            appState.userStats.xp += bonus;
+            appState.userStats.weeklyXP += bonus;
+            showNotification(`+${bonus} XP`, 'success');
+            
+            appState.cardQueue.shift();
+            loadNextCard();
+            updateAllUI();
+            saveToLocalStorage();
+        }
+        
+        // ==================== SPACED REPETITION ====================
+        function updateSpacedRepetition(card, difficulty) {
+            const key = `${card.type}_${card.question}`;
+            
+            if (!appState.spacedRepetition[key]) {
+                appState.spacedRepetition[key] = { interval: 1, easeFactor: 2.5, nextReview: Date.now() };
+            }
+            
+            const sr = appState.spacedRepetition[key];
+            
+            switch (difficulty) {
+                case 'easy': sr.interval *= 2.5; sr.easeFactor += 0.15; break;
+                case 'medium': sr.interval *= 2; break;
+                case 'hard': sr.interval = 1; sr.easeFactor -= 0.2; break;
+            }
+            
+            sr.easeFactor = Math.max(1.3, sr.easeFactor);
+            sr.nextReview = Date.now() + (sr.interval * 24 * 60 * 60 * 1000);
+        }
+        
+        // ==================== TIMER ====================
+        function startSessionTimer() {
+            appState.sessionStartTime = Date.now();
+            if (appState.sessionTimer) clearInterval(appState.sessionTimer);
+            
+            appState.sessionTimer = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - appState.sessionStartTime) / 1000);
+                const mins = Math.floor(elapsed / 60);
+                const secs = elapsed % 60;
+                document.getElementById('session-time').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+        
+        function stopSessionTimer() {
+            if (appState.sessionTimer) {
+                clearInterval(appState.sessionTimer);
+                const elapsed = Math.floor((Date.now() - appState.sessionStartTime) / 1000);
+                appState.userStats.totalStudyTime += Math.floor(elapsed / 60);
+                saveToLocalStorage();
+            }
+        }
+        
+        // ==================== DAILY CHALLENGE ====================
+        function startDailyChallenge() {
+            appState.currentDifficulty = 'hard';
+            appState.currentDeck = 'daily';
+            
+            const allCards = [];
+            Object.keys(expertData).forEach(deck => {
+                if (expertData[deck].hard) {
+                    expertData[deck].hard.forEach(card => {
+                        allCards.push({
+                            question: card.q,
+                            answer: card.a,
+                            hint: card.hint,
+                            funFact: card.fact,
+                            type: deck,
+                            difficulty: 'hard',
+                            isFlag: card.isFlag || false
+                        });
+                    });
+                }
+            });
+            
+            allCards.sort(() => Math.random() - 0.5);
+            appState.cardQueue = allCards.slice(0, 15);
+            
+            switchScreen('flashcards');
+            startSessionTimer();
+            loadNextCard();
+        }
+        
+        // ==================== MAP QUIZ ====================
+        let map;
+        const mapCountries = [
+            { name: "Kazakhstan", lat: 48.02, lng: 66.92 },
+            { name: "Mongolia", lat: 46.86, lng: 103.85 },
+            { name: "Turkmenistan", lat: 38.97, lng: 59.56 },
+            { name: "Tajikistan", lat: 38.86, lng: 71.28 },
+            { name: "Kyrgyzstan", lat: 41.20, lng: 74.77 },
+            { name: "Uzbekistan", lat: 41.38, lng: 64.59 },
+            { name: "Azerbaijan", lat: 40.14, lng: 47.58 },
+            { name: "Georgia", lat: 42.32, lng: 43.36 },
+            { name: "Armenia", lat: 40.07, lng: 45.04 },
+            { name: "Laos", lat: 19.86, lng: 102.50 },
+            { name: "Bhutan", lat: 27.51, lng: 90.43 },
+            { name: "Nepal", lat: 28.39, lng: 84.12 },
+            { name: "Bangladesh", lat: 23.68, lng: 90.36 },
+            { name: "Myanmar", lat: 21.91, lng: 95.96 },
+            { name: "Cambodia", lat: 12.57, lng: 104.99 }
+        ];
+        
+        function initializeMap() {
+            if (!document.getElementById('map')) return;
+            
+            map = L.map('map').setView([35, 70], 3);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+            
+            mapCountries.forEach(country => {
+                L.marker([country.lat, country.lng])
+                    .bindPopup(`<b>${country.name}</b>`)
+                    .addTo(map)
+                    .on('click', () => {
+                        if (appState.mapQuiz.currentCountry === country.name) {
+                            appState.mapQuiz.score++;
+                            appState.userStats.xp += 30;
+                            appState.userStats.weeklyXP += 30;
+                            showNotification('✓ Correct! +30 XP', 'success');
+                            if (appState.settings.soundEnabled) playSound('correct');
+                        } else {
+                            showNotification(`✗ Wrong! That's ${country.name}`, 'error');
+                            if (appState.settings.soundEnabled) playSound('incorrect');
+                        }
+                        updateMapScore();
+                        updateAllUI();
+                        saveToLocalStorage();
+                        nextMapQuestion();
+                    });
+            });
+        }
+        
+        function startMapQuiz() {
+            appState.mapQuiz = { score: 0, total: 0, currentCountry: null };
+            nextMapQuestion();
+        }
+        
+        function nextMapQuestion() {
+            const country = mapCountries[Math.floor(Math.random() * mapCountries.length)];
+            appState.mapQuiz.currentCountry = country.name;
+            appState.mapQuiz.total++;
+            document.getElementById('map-question').textContent = `Click on: ${country.name}`;
+            updateMapScore();
+        }
+        
+        function updateMapScore() {
+            document.getElementById('map-score').textContent = appState.mapQuiz.score;
+            const acc = appState.mapQuiz.total > 0 ? Math.round((appState.mapQuiz.score / appState.mapQuiz.total) * 100) : 0;
+            document.getElementById('map-accuracy').textContent = acc + '%';
+        }
+        
+        function resetMapView() {
+            if (map) map.setView([35, 70], 3);
+        }
+        
+        // ==================== UI UPDATES ====================
+        function updateAllUI() {
+            // Header
+            document.getElementById('streak').textContent = appState.userStats.streak;
+            document.getElementById('xp').textContent = appState.userStats.xp;
+            document.getElementById('level').textContent = appState.userStats.level;
+            
+            // Cards remaining
+            updateCardsRemaining();
+            
+            // Today's progress
+            const todayCards = appState.userStats.cardsStudied;
+            const target = appState.settings.cardsPerSession;
+            document.getElementById('today-progress-text').textContent = `${Math.min(todayCards, target)}/${target} cards`;
+            document.getElementById('today-progress-bar').style.width = `${Math.min(100, (todayCards / target) * 100)}%`;
+            
+            // Deck progress bars
+            updateDeckProgress();
+        }
+        
+        function updateCardsRemaining() {
+            document.getElementById('cards-today').textContent = appState.userStats.cardsStudied;
+            document.getElementById('cards-remaining').textContent = appState.cardQueue.length;
+            
+            const total = appState.userStats.correctAnswers + appState.userStats.incorrectAnswers;
+            document.getElementById('session-accuracy').textContent = total > 0
+                ? `${appState.userStats.correctAnswers}/${total} (${Math.round((appState.userStats.correctAnswers / total) * 100)}%)`
+                : '--';
+        }
+        
+        function updateDeckProgress() {
+            Object.keys(expertData).forEach(deck => {
+                const bar = document.getElementById(`progress-${deck}`);
+                if (bar) {
+                    const progress = appState.userStats.deckProgress[deck] || 0;
+                    bar.style.width = `${Math.min(100, progress)}%`;
+                }
+            });
+        }
+        
+        function updateProfileUI() {
+            document.getElementById('profile-name').textContent = appState.settings.displayName;
+            document.getElementById('profile-level').textContent = appState.userStats.level;
+            document.getElementById('total-cards').textContent = appState.userStats.totalCards;
+            document.getElementById('total-streak').textContent = appState.userStats.streak;
+            document.getElementById('total-xp').textContent = appState.userStats.xp;
+            
+            const total = appState.userStats.correctAnswers + appState.userStats.incorrectAnswers;
+            document.getElementById('accuracy-rate').textContent = total > 0
+                ? `${Math.round((appState.userStats.correctAnswers / total) * 100)}%`
+                : '0%';
+            
+            // XP bar
+            const xpForNext = appState.userStats.level * 150;
+            const xpProgress = (appState.userStats.xp % xpForNext) / xpForNext * 100;
+            document.getElementById('xp-bar-fill').style.width = `${xpProgress}%`;
+            document.getElementById('current-xp').textContent = appState.userStats.xp % xpForNext;
+            document.getElementById('next-level-xp').textContent = xpForNext;
+            
+            // Rank title
+            const ranks = ['Novice Explorer', 'Geography Student', 'Map Reader', 'World Traveler', 'Geography Expert', 'World Master'];
+            document.getElementById('rank-title').textContent = ranks[Math.min(appState.userStats.level - 1, ranks.length - 1)];
+            
+            // Weekly stats
+            document.getElementById('weekly-xp').textContent = `${appState.userStats.weeklyXP} XP`;
+            document.getElementById('best-week-xp').textContent = `${appState.userStats.bestWeekXP} XP`;
+            document.getElementById('total-time').textContent = `${appState.userStats.totalStudyTime} min`;
+            
+            // Achievements
+            updateAchievementsUI();
+        }
+        
+        function updateAchievementsUI() {
+            appState.userStats.achievements.forEach(ach => {
+                const el = document.querySelector(`[data-achievement="${ach}"]`);
+                if (el) {
+                    el.classList.remove('locked');
+                    el.classList.add('unlocked');
+                }
+            });
+        }
+        
+        // ==================== LEVEL & ACHIEVEMENTS ====================
+        function checkLevelUp() {
+            const needed = appState.userStats.level * 150;
+            if (appState.userStats.xp >= needed) {
+                appState.userStats.level++;
+                showModal('🎉 Level Up!', `Congratulations!\n\nYou've reached Level ${appState.userStats.level}!\n\nKeep studying to unlock more achievements.`);
+                if (appState.settings.soundEnabled) playSound('levelup');
+            }
+        }
+        
+        function checkAchievements() {
+            const checks = {
+                'ten-cards': appState.userStats.totalCards >= 10,
+                'fifty-cards': appState.userStats.totalCards >= 50,
+                'hundred-cards': appState.userStats.totalCards >= 100,
+                'week-streak': appState.userStats.streak >= 7,
+                'month-streak': appState.userStats.streak >= 30,
+                'perfect-ten': appState.correctStreak >= 10,
+                'speed-demon': false // Would need timing implementation
+            };
+            
+            Object.keys(checks).forEach(ach => {
+                if (checks[ach] && !appState.userStats.achievements.includes(ach)) {
+                    unlockAchievement(ach);
+                }
+            });
+        }
+        
+        function unlockAchievement(id) {
+            appState.userStats.achievements.push(id);
+            appState.userStats.xp += 100;
+            
+            const names = {
+                'ten-cards': 'Getting Started',
+                'fifty-cards': 'Scholar',
+                'hundred-cards': 'Century Club',
+                'week-streak': 'Week Warrior',
+                'month-streak': 'Dedicated',
+                'perfect-ten': 'Perfect 10',
+                'speed-demon': 'Speed Demon'
+            };
+            
+            showModal('🏆 Achievement Unlocked!', `${names[id]}\n\n+100 XP Bonus!`);
+            updateAchievementsUI();
+            saveToLocalStorage();
+        }
+        
+        function checkStreak() {
+            const today = new Date().toDateString();
+            const lastStudy = appState.userStats.lastStudyDate;
+            
+            if (lastStudy) {
+                const last = new Date(lastStudy);
+                const diff = Math.floor((new Date(today) - last) / (1000 * 60 * 60 * 24));
+                
+                if (diff > 1) {
+                    appState.userStats.streak = 0;
+                } else if (diff === 1) {
+                    appState.userStats.streak++;
+                }
+            }
+            
+            appState.userStats.lastStudyDate = today;
+            
+            // Check weekly reset
+            const weekStart = getWeekStart();
+            if (!appState.userStats.weekStart || appState.userStats.weekStart !== weekStart) {
+                if (appState.userStats.weeklyXP > appState.userStats.bestWeekXP) {
+                    appState.userStats.bestWeekXP = appState.userStats.weeklyXP;
+                }
+                appState.userStats.weeklyXP = 0;
+                appState.userStats.weekStart = weekStart;
+            }
+            
+            saveToLocalStorage();
+        }
+        
+        function getWeekStart() {
+            const d = new Date();
+            d.setHours(0, 0, 0, 0);
+            d.setDate(d.getDate() - d.getDay());
+            return d.toDateString();
+        }
+        
+        function showCompletionMessage() {
+            stopSessionTimer();
+            
+            const total = appState.userStats.correctAnswers + appState.userStats.incorrectAnswers;
+            const accuracy = total > 0 ? Math.round((appState.userStats.correctAnswers / total) * 100) : 0;
+            
+            // Update deck progress
+            if (appState.currentDeck && appState.currentDeck !== 'daily') {
+                appState.userStats.deckProgress[appState.currentDeck] = 
+                    (appState.userStats.deckProgress[appState.currentDeck] || 0) + 10;
+            }
+            
+            showModal('🏆 Session Complete!', 
+                `Great work!\n\n📊 Stats:\n• Cards: ${appState.userStats.cardsStudied}\n• Accuracy: ${accuracy}%\n• XP Earned: ${appState.userStats.xp}\n• Level: ${appState.userStats.level}`);
+            
+            saveToLocalStorage();
+            setTimeout(() => switchScreen('home'), 3000);
+        }
+        
+        // ==================== SETTINGS ====================
+        function applySettingsToggles() {
+            if (appState.settings.darkMode) {
+                document.body.setAttribute('data-theme', 'dark');
+                document.getElementById('dark-mode-toggle')?.classList.add('active');
+            }
+            if (appState.settings.soundEnabled) {
+                document.getElementById('sound-toggle')?.classList.add('active');
+            }
+            if (appState.settings.hintsEnabled) {
+                document.getElementById('hints-toggle')?.classList.add('active');
+            }
+            if (appState.settings.spacedRepetition) {
+                document.getElementById('sr-toggle')?.classList.add('active');
+            }
+            
+            const nameInput = document.getElementById('display-name');
+            if (nameInput) nameInput.value = appState.settings.displayName;
+            
+            const cardsSelect = document.getElementById('cards-per-session');
+            if (cardsSelect) cardsSelect.value = appState.settings.cardsPerSession;
+        }
+        
+        function toggleDarkMode(el) {
+            el.classList.toggle('active');
+            appState.settings.darkMode = el.classList.contains('active');
+            
+            if (appState.settings.darkMode) {
+                document.body.setAttribute('data-theme', 'dark');
+            } else {
+                document.body.removeAttribute('data-theme');
+            }
+            saveToLocalStorage();
+        }
+        
+        function toggleHighContrast(el) {
+            el.classList.toggle('active');
+            appState.settings.highContrast = el.classList.contains('active');
+            document.body.style.filter = appState.settings.highContrast ? 'contrast(1.3)' : '';
+            saveToLocalStorage();
+        }
+        
+        function toggleSound(el) {
+            el.classList.toggle('active');
+            appState.settings.soundEnabled = el.classList.contains('active');
+            saveToLocalStorage();
+        }
+        
+        function toggleReminders(el) {
+            el.classList.toggle('active');
+            appState.settings.remindersEnabled = el.classList.contains('active');
+            if (appState.settings.remindersEnabled) requestNotificationPermission();
+            saveToLocalStorage();
+        }
+        
+        function toggleHints(el) {
+            el.classList.toggle('active');
+            appState.settings.hintsEnabled = el.classList.contains('active');
+            saveToLocalStorage();
+        }
+        
+        function toggleSpacedRepetition(el) {
+            el.classList.toggle('active');
+            appState.settings.spacedRepetition = el.classList.contains('active');
+            saveToLocalStorage();
+        }
+        
+        function updateDisplayName(name) {
+            appState.settings.displayName = name || 'Explorer';
+            saveToLocalStorage();
+        }
+        
+        function updateCardsPerSession(val) {
+            appState.settings.cardsPerSession = parseInt(val);
+            saveToLocalStorage();
+        }
+        
+        function changeLanguage(lang) {
+            appState.settings.language = lang;
+            showNotification(`Language: ${lang}`, 'info');
+            saveToLocalStorage();
+        }
+        
+        function exportProgress() {
+            const data = JSON.stringify({ userStats: appState.userStats, settings: appState.settings });
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'geoflash_progress.json';
+            a.click();
+            showNotification('Progress exported!', 'success');
+        }
+        
+        function importProgress() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        Object.assign(appState.userStats, data.userStats);
+                        Object.assign(appState.settings, data.settings);
+                        saveToLocalStorage();
+                        updateAllUI();
+                        showNotification('Progress imported!', 'success');
+                    } catch (err) {
+                        showNotification('Invalid file!', 'error');
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+        
+        function resetProgress() {
+            if (confirm('Reset ALL progress? This cannot be undone!')) {
+                localStorage.removeItem('geoflash_expert_v2');
+                location.reload();
+            }
+        }
+        
+        // ==================== UTILITIES ====================
+        function showModal(title, text) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-text').textContent = text;
+            document.getElementById('modal').classList.add('active');
+        }
+        
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+        }
+        
+        function showNotification(msg, type) {
+            const n = document.createElement('div');
+            n.style.cssText = `position:fixed;top:80px;left:50%;transform:translateX(-50%);padding:12px 24px;background:${type==='success'?'var(--success)':type==='error'?'var(--danger)':type==='warning'?'var(--warning)':'var(--primary)'};color:white;border-radius:12px;z-index:10000;font-weight:600;box-shadow:var(--shadow-lg);animation:slideDown 0.3s ease;`;
+            n.textContent = msg;
+            document.body.appendChild(n);
+            setTimeout(() => {
+                n.style.animation = 'slideUp 0.3s ease';
+                setTimeout(() => n.remove(), 300);
+            }, 2000);
+        }
+        
+        function playSound(type) {
+            // Sound implementation placeholder
+            console.log(`Sound: ${type}`);
+        }
+        
+        function requestNotificationPermission() {
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+        }
+        
+        // ==================== PWA ====================
+        let deferredPrompt;
+        
+        function checkPWA() {
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                document.getElementById('install-button').style.display = 'block';
+            });
+        }
+        
+        function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(() => {
+                    deferredPrompt = null;
+                    document.getElementById('install-button').style.display = 'none';
+                });
+            }
+        }
+        
+        // ==================== KEYBOARD SHORTCUTS ====================
+        function setupKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'M') {
+                    e.preventDefault();
+                    toggleViewMode();
+                }
+                if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'D') {
+                    e.preventDefault();
+                    const toggle = document.getElementById('dark-mode-toggle');
+                    if (toggle) toggleDarkMode(toggle);
+                }
+                
+                if (!e.target.matches('input, textarea')) {
+                    const keys = { '1': 'home', '2': 'flashcards', '3': 'map', '4': 'profile', '5': 'settings' };
+                    if (keys[e.key]) switchScreen(keys[e.key]);
+                }
+            });
+        }
+        
+        // ==================== STYLES ====================
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideDown { from { transform: translate(-50%, -20px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+            @keyframes slideUp { from { transform: translate(-50%, 0); opacity: 1; } to { transform: translate(-50%, -20px); opacity: 0; } }
+        `;
+        document.head.appendChild(style);
+        
+        // ==================== INIT ====================
+        window.addEventListener('DOMContentLoaded', initApp);
+        window.addEventListener('resize', () => {
+            if (document.getElementById('view-mode-select')?.value === 'auto') {
+                const w = window.innerWidth;
+                setViewMode(w <= 480 ? 'mobile' : w <= 768 ? 'tablet' : 'desktop');
+            }
+        });
+    </script>
+</body>
+</html>
