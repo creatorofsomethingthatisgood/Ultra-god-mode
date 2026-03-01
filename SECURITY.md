@@ -6,3 +6,6 @@ More versions coming soon!
 
 ## Report security issues in issues page ##
 Please if you have a security issue or any issue about ultra god mode please tell me there.
+
+## Disclaimer I am not responsible for any damages on your computer or anyone's computer ##
+
