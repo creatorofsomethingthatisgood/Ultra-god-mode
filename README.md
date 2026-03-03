@@ -7,4 +7,5 @@ This is educational content only I am not responsible for any damages to compute
 
 This is a fun thing go watch me on youtube @fikawarriors.
 
-This will recive updates forever with LTS coming soon!
+This will recive updates forever with LTS coming soon! Edit: It is out
+Disclaimer: I will not be responsible for any damages.
