@@ -9,3 +9,15 @@ This is a fun thing go watch me on youtube @fikawarriors.
 
 This will recive updates forever with LTS coming soon! Edit: It is out
 Disclaimer: I will not be responsible for any damages.
+
+
+## Download ##
+
+```bash
+git clone https://github.com/creatorofsomethingthatisgood/Ultra-god-mode
+
+cd ultragodmode.
+
+´´´
+
+# done !
